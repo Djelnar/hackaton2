@@ -190,7 +190,11 @@ type ServiceChatsAdminData = {
   };
 };
 
-const serviceChatsAdminData: ServiceChatsAdminData = {
+type Props = {
+  user: User;
+};
+
+const afsfasf: ServiceChatsAdminData = {
   li4ny_kabinet_admin: {
     messages: [
       {
@@ -201,76 +205,9 @@ const serviceChatsAdminData: ServiceChatsAdminData = {
           tasksGiven: 1499,
           tasksQualified: 1337
         }
-      },
-      {
-        type: "stats",
-        id: "fevral20201",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20202",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20203",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20204",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20205",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20206",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
-      },
-      {
-        type: "stats",
-        id: "fevral20207",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
       }
     ]
   }
-};
-
-type Props = {
-  user: User;
 };
 
 const Cabinet: React.FC<Props> = ({ user }) => {
@@ -319,6 +256,33 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const [currentOpenMessages, setCurrentOpenMessages] = useState<any>(null);
   const scrollref = useRef<HTMLDivElement>(null);
 
+  const [serviceChatsAdminData, setServiceChatsAdminData] = useState<
+    ServiceChatsAdminData
+  >(afsfasf);
+
+  const updateStats = useCallback(() => {
+    setServiceChatsAdminData(s => {
+      const lasts = s.li4ny_kabinet_admin.messages.filter(
+        v => v.type === "stats"
+      );
+      const lasss = lasts[lasts.length - 1];
+
+      const lasss2 = JSON.parse(JSON.stringify(lasss));
+
+      lasss2.data = {
+        ...lasss2.data,
+        tasksGiven: lasss2.data.tasksGiven,
+        tasksQualified: lasss2.data.tasksQualified
+      };
+
+      s.li4ny_kabinet_admin.messages.push(lasss2);
+
+      const res = JSON.parse(JSON.stringify(s));
+
+      return res;
+    });
+  }, []);
+
   useEffect(() => {
     setCurrentOpenData(
       currentOpen
@@ -333,7 +297,13 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         scrollref.current!.scrollTo(0, scrollref.current!.scrollHeight);
       }
     }, 0);
-  }, [chats, chatsMap, currentOpen, serviceChatsAdminMap]);
+  }, [
+    chats,
+    chatsMap,
+    currentOpen,
+    serviceChatsAdminData,
+    serviceChatsAdminMap
+  ]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -464,14 +434,18 @@ const Cabinet: React.FC<Props> = ({ user }) => {
               ))}
               {isAdmin && (
                 <div className={s.butrtohjsw}>
-                  <Button variant="contained" color="primary">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={updateStats}
+                  >
                     Показать статистику
                   </Button>
                   <Button variant="contained" color="primary">
-                    Редактировать группы
+                    Создать задание
                   </Button>
                   <Button variant="contained" color="primary">
-                    Создать задание
+                    Редактировать группы
                   </Button>
                   <Button variant="contained" color="primary">
                     Создать пользователя
