@@ -5,15 +5,27 @@ import React, {
   useEffect,
   useRef
 } from "react";
-import { makeStyles, Paper, Typography, Button } from "@material-ui/core";
+import {
+  makeStyles,
+  Paper,
+  Typography,
+  Button,
+  DialogTitle,
+  Dialog,
+  DialogContent,
+  TextField
+} from "@material-ui/core";
 import fileicon from "./file.png";
 import sendicon from "./send.png";
 import { useDebouncedValue } from "./useDebouncedValue";
-import { API, Chat, User } from "./api";
+import { API, Chat, User, Types } from "./api";
 
 const WIDTH = 400;
 
 const us = makeStyles(theme => ({
+  field: {
+    marginBottom: theme.spacing(1)
+  },
   splitWrap: {
     display: "flex",
     alignItems: "stretch",
@@ -89,6 +101,12 @@ const us = makeStyles(theme => ({
     height: "100%",
     fontSize: 28
   },
+  textateada: {
+    width: "100%",
+    resize: "none",
+    height: "300px",
+    ...theme.typography.body1
+  },
   messages: {
     overflowY: "auto",
     padding: theme.spacing(2, 2, 15),
@@ -147,7 +165,7 @@ const us = makeStyles(theme => ({
     padding: theme.spacing(0, 1)
   },
   cloud: {
-    backgroundColor: "#ccc",
+    backgroundColor: "#eee",
     borderRadius: theme.shape.borderRadius,
     padding: theme.spacing(2),
     minWidth: 200,
@@ -176,7 +194,7 @@ const serviceChatsAdmin: Chat[] = [
   }
 ];
 
-type ServiceChatsAdminDataMessagesTypes = "stats";
+type ServiceChatsAdminDataMessagesTypes = "stats" | "newUser";
 
 type ServiceChatsAdminDataMessage = {
   type: ServiceChatsAdminDataMessagesTypes;
@@ -341,6 +359,88 @@ const Cabinet: React.FC<Props> = ({ user }) => {
       });
   }, []);
 
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
+
+  const [types, setTypes] = useState<Types[]>([]);
+
+  useEffect(() => {
+    API.getTypes().then(res => setTypes(res));
+  }, []);
+
+  const [taskToAdd, setTaskToAdd] = useState("");
+
+  const newTask = useCallback(() => {
+    API.addChat().then(res => setTaskToAdd(res.id));
+
+    setCreateTaskOpen(true);
+  }, []);
+
+  const handleSubmitNewTask = useCallback<
+    React.FormEventHandler<HTMLFormElement>
+  >(
+    e => {
+      e.preventDefault();
+      //@ts-ignore
+      const res = [...e.target.elements].map(e => e.value);
+
+      API.editChat({
+        id: taskToAdd,
+        title: res[0],
+        about: res[1],
+        type: res[2],
+        end_event: String(+new Date(res[3]) / 1000)
+      }).then(() => {
+        setCreateTaskOpen(false);
+        setTaskToAdd("");
+      });
+    },
+    [taskToAdd]
+  );
+
+  const [cuo, setCuo] = useState(false);
+  const [cuoKey, setCuoKey] = useState(Math.random().toString());
+
+  const closeCu = useCallback(() => {
+    setCuo(false);
+    setCuoKey(Math.random().toString());
+  }, []);
+
+  const handleSubmitNewUser = useCallback<
+    React.FormEventHandler<HTMLFormElement>
+  >(
+    e => {
+      e.preventDefault();
+      //@ts-ignore
+      const res = [...e.target.elements].map(e => e.value);
+
+      API.createUser({
+        login: res[0],
+        password: res[1],
+        type: res[2],
+        status: "0"
+      }).then(() => {
+        setServiceChatsAdminData(s => {
+          s.li4ny_kabinet_admin.messages.push({
+            id: Math.random().toString(),
+            type: "newUser",
+            data: {
+              login: res[0],
+              password: res[1],
+              type: res[2],
+              status: "0"
+            }
+          });
+
+          const res2 = JSON.parse(JSON.stringify(s));
+
+          return res2;
+        });
+        closeCu();
+      });
+    },
+    [closeCu]
+  );
+
   if (chatsLoading) {
     return null;
   }
@@ -348,18 +448,113 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const isAdmin = currentOpenData && currentOpenData.status === "999";
 
   return (
-    <div className={s.splitWrap}>
-      <div className={s.chats}>
-        <div className={s.searchWrapper}>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Поиск"
-            className={s.searchInput}
-          />
-        </div>
-        {user.status === "1" &&
-          serviceChatsAdmin.map(v => (
+    <>
+      <Dialog open={cuo} key={cuoKey} onClose={closeCu} fullWidth scroll="body">
+        <DialogTitle>Добавить пользователя</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmitNewUser}>
+            <div className={s.field}>
+              <TextField label="Логин" type="text" required fullWidth />
+            </div>
+            <div className={s.field}>
+              <TextField label="Пароль" type="text" required fullWidth />
+            </div>
+            <div style={{ marginBottom: "16px" }}>
+              <Typography variant="body1" gutterBottom>
+                Категория
+              </Typography>
+              <select required>
+                {types.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.title.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: "16px" }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                type="button"
+                onClick={closeCu}
+              >
+                Отмена
+              </Button>
+              <Button variant="contained" color="primary" type="submit">
+                Создать пользователя
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={createTaskOpen} key={taskToAdd} fullWidth scroll="body">
+        <DialogTitle>Задание #{taskToAdd}</DialogTitle>
+        <DialogContent>
+          <form onSubmit={handleSubmitNewTask}>
+            <div className={s.field}>
+              <TextField
+                label="Название задания"
+                type="text"
+                required
+                fullWidth
+              />
+            </div>
+            <div className={s.field}>
+              <Typography variant="body1" gutterBottom>
+                Подробное описание задания
+              </Typography>
+              <textarea className={s.textateada} required />
+            </div>
+            <div style={{ marginBottom: "16px" }}>
+              <Typography variant="body1" gutterBottom>
+                Категория
+              </Typography>
+              <select required>
+                {types.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.title.toUpperCase()}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: "16px" }}>
+              <Typography variant="body1" gutterBottom>
+                Дедлайн
+              </Typography>
+              <input type="date" required />
+            </div>
+            <div style={{ marginBottom: "16px" }}>
+              <Button variant="contained" color="primary" type="submit">
+                Создать задание
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <div className={s.splitWrap}>
+        <div className={s.chats}>
+          <div className={s.searchWrapper}>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Поиск"
+              className={s.searchInput}
+            />
+          </div>
+          {user.status === "1" &&
+            serviceChatsAdmin.map(v => (
+              <Paper
+                key={v.id}
+                className={s.chatCard}
+                onClick={() => setCurrentOpen(v.id)}
+              >
+                <Paper className={s.avatar}></Paper>
+                <div className={s.cardText}>
+                  <Typography variant="h6">{v.title}</Typography>
+                </div>
+              </Paper>
+            ))}
+          {filteredArr.map(v => (
             <Paper
               key={v.id}
               className={s.chatCard}
@@ -367,24 +562,12 @@ const Cabinet: React.FC<Props> = ({ user }) => {
             >
               <Paper className={s.avatar}></Paper>
               <div className={s.cardText}>
-                <Typography variant="h6">{v.title}</Typography>
+                <Typography variant="body1">{v.title}</Typography>
+                <Typography variant="body2">#{v.id}</Typography>
               </div>
             </Paper>
           ))}
-        {filteredArr.map(v => (
-          <Paper
-            key={v.id}
-            className={s.chatCard}
-            onClick={() => setCurrentOpen(v.id)}
-          >
-            <Paper className={s.avatar}></Paper>
-            <div className={s.cardText}>
-              <Typography variant="body1">{v.title}</Typography>
-              <Typography variant="body2">#{v.id}</Typography>
-            </div>
-          </Paper>
-        ))}
-        {/* <div className={s.archive}>
+          {/* <div className={s.archive}>
           <Button
             fullWidth
             color="secondary"
@@ -394,83 +577,112 @@ const Cabinet: React.FC<Props> = ({ user }) => {
             архив
           </Button>
         </div> */}
-      </div>
-      <div className={s.main}>
-        {currentOpenData && (
-          <>
-            <div className={s.chatbar}>
-              <Paper className={s.avatar}></Paper>
-              <div className={s.topbarText}>
-                <Typography
-                  variant="h5"
-                  color="inherit"
-                  className={s.topbarTitle}
-                >
-                  {currentOpenData.title}
-                </Typography>
-                <Typography variant="body2" color="inherit">
-                  {isAdmin ? user.login : <>#{currentOpenData.id}</>}
-                </Typography>
-              </div>
-              {!isAdmin && <div className={s.chatbardotdotdot}>...</div>}
-            </div>
-            <div className={s.messages} ref={scrollref}>
-              {currentOpenMessages?.messages?.map((m: any) => (
-                <Paper className={s.cloud} key={m.id}>
-                  {m.type === "stats" && (
-                    <>
-                      <Typography variant="h6">
-                        Статистика: {m.data.date}
-                      </Typography>
-                      <Typography variant="h5">
-                        Выдано заданий: {m.data.tasksGiven}
-                      </Typography>
-                      <Typography variant="h5">
-                        Проверено заданий: {m.data.tasksQualified}
-                      </Typography>
-                    </>
-                  )}
-                </Paper>
-              ))}
-              {isAdmin && (
-                <div className={s.butrtohjsw}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={updateStats}
+        </div>
+        <div className={s.main}>
+          {currentOpenData && (
+            <>
+              <div className={s.chatbar}>
+                <Paper className={s.avatar}></Paper>
+                <div className={s.topbarText}>
+                  <Typography
+                    variant="h5"
+                    color="inherit"
+                    className={s.topbarTitle}
                   >
-                    Показать статистику
-                  </Button>
-                  <Button variant="contained" color="primary">
-                    Создать задание
-                  </Button>
-                  <Button variant="contained" color="primary">
-                    Редактировать группы
-                  </Button>
-                  <Button variant="contained" color="primary">
-                    Создать пользователя
-                  </Button>
+                    {currentOpenData.title}
+                  </Typography>
+                  <Typography variant="body2" color="inherit">
+                    {isAdmin ? user.login : <>#{currentOpenData.id}</>}
+                  </Typography>
                 </div>
-              )}
-              <Paper
-                className={s.inputPaper}
-                component="form"
-                onSubmit={handleSendMessage as any}
-              >
-                <label className={s.fileButton}>
-                  <img src={fileicon} alt="" />
-                  <input type="file" className={s.fileInput} />
-                </label>
-                <input className={s.input} />
-                <button type="submit" className={s.sendButton}>
-                  <img src={sendicon} alt="" />
-                </button>
-              </Paper>
-            </div>
-          </>
-        )}
+                {!isAdmin && <div className={s.chatbardotdotdot}>...</div>}
+              </div>
+              <div className={s.messages} ref={scrollref}>
+                {currentOpenMessages?.messages?.map((m: any) => (
+                  <Paper className={s.cloud} key={m.id}>
+                    {m.type === "stats" && (
+                      <>
+                        <Typography variant="h6">
+                          Статистика: {m.data.date}
+                        </Typography>
+                        <Typography variant="h5">
+                          Выдано заданий: {m.data.tasksGiven}
+                        </Typography>
+                        <Typography variant="h5">
+                          Проверено заданий: {m.data.tasksQualified}
+                        </Typography>
+                      </>
+                    )}
+                    {m.type === "newUser" && (
+                      <>
+                        <Typography variant="h5">
+                          Логин: {m.data.login}
+                        </Typography>
+                        <Typography variant="h5">
+                          Пароль: {m.data.password}
+                        </Typography>
+                        <Typography variant="h5">
+                          Категория:{" "}
+                          {types.find(v => v.id === m.data.type)?.title}
+                        </Typography>
+                        <Typography variant="h5">
+                          Тип:{" "}
+                          {m.data.status === "0"
+                            ? "Пользователь"
+                            : "Администратор"}
+                        </Typography>
+                      </>
+                    )}
+                  </Paper>
+                ))}
+                {isAdmin && (
+                  <div className={s.butrtohjsw}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={updateStats}
+                    >
+                      Показать статистику
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={newTask}
+                    >
+                      Создать задание
+                    </Button>
+                    <Button variant="contained" color="primary">
+                      Редактировать группы
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => setCuo(true)}
+                    >
+                      Создать пользователя
+                    </Button>
+                  </div>
+                )}
+                <Paper
+                  className={s.inputPaper}
+                  component="form"
+                  onSubmit={handleSendMessage as any}
+                >
+                  <label className={s.fileButton}>
+                    <img src={fileicon} alt="" />
+                    <input type="file" className={s.fileInput} />
+                  </label>
+                  <input className={s.input} />
+                  <button type="submit" className={s.sendButton}>
+                    <img src={sendicon} alt="" />
+                  </button>
+                </Paper>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

@@ -57,7 +57,7 @@ const Login: React.FC<Props> = ({ setIsIn, setUser }) => {
             <TextField
               value={login}
               onChange={e => setLogin(e.target.value)}
-              label="Username"
+              label="Логин"
               type="text"
               fullWidth
             />
@@ -66,14 +66,14 @@ const Login: React.FC<Props> = ({ setIsIn, setUser }) => {
             <TextField
               value={password}
               onChange={e => setPassword(e.target.value)}
-              label="Password"
+              label="Пароль"
               type="password"
               fullWidth
             />
           </div>
           <div className={s.field}>
             <Button type="submit" variant="contained" color="primary" fullWidth>
-              GO
+              Принять
             </Button>
           </div>
         </form>
