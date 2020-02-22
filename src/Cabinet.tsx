@@ -3,6 +3,7 @@ import { makeStyles, Paper, Typography, Button } from "@material-ui/core";
 import fileicon from "./file.png";
 import sendicon from "./send.png";
 import { useDebouncedValue } from "./useDebouncedValue";
+import { API, Chat, User } from "./api";
 
 const WIDTH = 400;
 
@@ -136,45 +137,45 @@ const us = makeStyles(theme => ({
   }
 }));
 
-type Props = {};
-
-//@ts-ignore
-const arr: string[] = [...Array(100).keys()];
+type Props = {
+  user: User;
+};
 
 const Cabinet: React.FC<Props> = () => {
   const s = us();
 
-  const handleFormSubmit = useCallback<React.FormEventHandler<HTMLFormElement>>(
-    e => {
-      e.preventDefault();
-    },
-    []
-  );
+  const handleSendMessage = useCallback<
+    React.FormEventHandler<HTMLFormElement>
+  >(e => {
+    e.preventDefault();
+  }, []);
 
   const [search, setSearch] = useState("");
 
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  const filteredArr = useMemo(
+  const [chatsLoading, setChatsLoading] = useState(true);
+  const [chats, setChats] = useState<Chat[]>([]);
+
+  const chatsMap = useMemo(
     () =>
-      debouncedSearch
-        ? arr.filter(v => String(v).includes(debouncedSearch))
-        : arr,
-    [debouncedSearch]
+      chats.reduce<{ [key: string]: Chat }>(
+        (acc, curr) => ({
+          ...acc,
+          [curr.id]: curr
+        }),
+        {}
+      ),
+    [chats]
   );
 
   const [currentOpen, setCurrentOpen] = useState<string | null>(null);
 
-  const [currentOpenData, setCurrentOpenData] = useState<{
-    id: string;
-    title: string;
-  } | null>(null);
+  const [currentOpenData, setCurrentOpenData] = useState<Chat | null>(null);
 
   useEffect(() => {
-    setCurrentOpenData(
-      currentOpen ? { id: currentOpen, title: "Задача " + currentOpen } : null
-    );
-  }, [currentOpen]);
+    setCurrentOpenData(currentOpen ? chatsMap[currentOpen] : null);
+  }, [chats, chatsMap, currentOpen]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -187,6 +188,34 @@ const Cabinet: React.FC<Props> = () => {
 
     return () => window.removeEventListener("keyup", handler);
   }, []);
+
+  const filteredArr = useMemo(
+    () =>
+      debouncedSearch
+        ? chats.filter(
+            v =>
+              v.title.includes(debouncedSearch) ||
+              v.about.includes(debouncedSearch) ||
+              v.id.includes(debouncedSearch)
+          )
+        : chats,
+    [chats, debouncedSearch]
+  );
+
+  useEffect(() => {
+    setChatsLoading(true);
+    API.getChats()
+      .then(res => {
+        setChats(res.result);
+      })
+      .finally(() => {
+        setChatsLoading(false);
+      });
+  }, []);
+
+  if (chatsLoading) {
+    return null;
+  }
 
   return (
     <div className={s.splitWrap}>
@@ -201,14 +230,14 @@ const Cabinet: React.FC<Props> = () => {
         </div>
         {filteredArr.map(v => (
           <Paper
-            key={v}
+            key={v.id}
             className={s.chatCard}
-            onClick={() => setCurrentOpen(v + 1)}
+            onClick={() => setCurrentOpen(v.id)}
           >
             <Paper className={s.avatar}></Paper>
             <div className={s.cardText}>
-              <Typography variant="body1">Задача под номером {v}</Typography>
-              <Typography variant="body2">#{v}</Typography>
+              <Typography variant="body1">{v.title}</Typography>
+              <Typography variant="body2">#{v.id}</Typography>
             </div>
           </Paper>
         ))}
@@ -246,7 +275,7 @@ const Cabinet: React.FC<Props> = () => {
               <Paper
                 className={s.inputPaper}
                 component="form"
-                onSubmit={handleFormSubmit as any}
+                onSubmit={handleSendMessage as any}
               >
                 <label className={s.fileButton}>
                   <img src={fileicon} alt="" />

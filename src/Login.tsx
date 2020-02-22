@@ -1,6 +1,6 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { Paper, TextField, makeStyles, Button } from "@material-ui/core";
-import { useHistory } from "react-router-dom";
+import { API } from "./api";
 
 const us = makeStyles(theme => ({
   wrapper: {
@@ -18,18 +18,35 @@ const us = makeStyles(theme => ({
   }
 }));
 
-type Props = {};
+type Props = {
+  setIsIn: Function;
+  setUser: Function;
+};
 
-const Login: React.FC<Props> = () => {
+const Login: React.FC<Props> = ({ setIsIn, setUser }) => {
   const s = us();
-  const h = useHistory();
+
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = useCallback<React.FormEventHandler<HTMLFormElement>>(
     e => {
       e.preventDefault();
-      h.push("/me");
+      if (login && password) {
+        API.login({
+          login,
+          password
+        })
+          .then(res => {
+            setUser(res);
+            setIsIn(true);
+          })
+          .catch((e: any) => {
+            console.log(e);
+          });
+      }
     },
-    [h]
+    [login, password, setIsIn, setUser]
   );
 
   return (
@@ -37,10 +54,22 @@ const Login: React.FC<Props> = () => {
       <Paper className={s.paper}>
         <form onSubmit={handleSubmit}>
           <div className={s.field}>
-            <TextField label="Username" type="text" fullWidth />
+            <TextField
+              value={login}
+              onChange={e => setLogin(e.target.value)}
+              label="Username"
+              type="text"
+              fullWidth
+            />
           </div>
           <div className={s.field}>
-            <TextField label="Password" type="password" fullWidth />
+            <TextField
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              label="Password"
+              type="password"
+              fullWidth
+            />
           </div>
           <div className={s.field}>
             <Button type="submit" variant="contained" color="primary" fullWidth>
