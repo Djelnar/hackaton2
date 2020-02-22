@@ -1,26 +1,39 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import { BrowserRouter, Route, Switch, Redirect } from "react-router-dom";
+import { CssBaseline, AppBar, Typography, Toolbar } from "@material-ui/core";
+import Login from "./Login";
+import Topbar from "./Topbar";
+import Cabinet from "./Cabinet";
 
-function App() {
+type Props = {};
+
+const App: React.FC<Props> = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      <CssBaseline />
+      <BrowserRouter>
+        <Switch>
+          <Route
+            path="/login"
+            exact
+            render={() => (
+              <AppBar position="static">
+                <Toolbar>
+                  <Typography variant="h6">DREAMHACK2020</Typography>
+                </Toolbar>
+              </AppBar>
+            )}
+          />
+          <Route component={Topbar} />
+        </Switch>
+        <Switch>
+          <Route path="/login" exact component={Login} />
+          <Route path="/me" exact component={Cabinet} />
+          <Redirect to="/login" />
+        </Switch>
+      </BrowserRouter>
+    </>
   );
-}
+};
 
 export default App;
