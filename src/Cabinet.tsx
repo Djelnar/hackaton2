@@ -143,7 +143,7 @@ const us = makeStyles(theme => ({
   searchInput: {
     width: "100%",
     height: 68,
-    fontSize: 32,
+    fontSize: 24,
     padding: theme.spacing(0, 1)
   },
   cloud: {

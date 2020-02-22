@@ -33,7 +33,7 @@ const App: React.FC<Props> = () => {
       <BrowserRouter>
         <Topbar user={user} />
         <Switch>
-          <Route path="/me" exact component={() => <Cabinet user={user} />} />
+          <Route path="*" exact component={() => <Cabinet user={user} />} />
         </Switch>
       </BrowserRouter>
     </>
