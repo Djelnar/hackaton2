@@ -1,4 +1,10 @@
-import React, { useCallback, useState, useMemo, useEffect } from "react";
+import React, {
+  useCallback,
+  useState,
+  useMemo,
+  useEffect,
+  useRef
+} from "react";
 import { makeStyles, Paper, Typography, Button } from "@material-ui/core";
 import fileicon from "./file.png";
 import sendicon from "./send.png";
@@ -85,7 +91,7 @@ const us = makeStyles(theme => ({
   },
   messages: {
     overflowY: "auto",
-    padding: theme.spacing(1, 1, 10),
+    padding: theme.spacing(2, 2, 15),
     position: "relative",
     height: "calc(100% - 84px)",
     display: "flex",
@@ -146,7 +152,17 @@ const us = makeStyles(theme => ({
     padding: theme.spacing(2),
     minWidth: 200,
     width: "100%",
-    maxWidth: 400
+    maxWidth: 400,
+    marginBottom: theme.spacing(2)
+  },
+  butrtohjsw: {
+    position: "fixed",
+    bottom: theme.spacing(9),
+    right: theme.spacing(1),
+    height: theme.spacing(6),
+    width: `calc(100% - ${WIDTH}px - ${theme.spacing(2)}px)`,
+    display: "flex",
+    justifyContent: "space-evenly"
   }
 }));
 
@@ -180,6 +196,69 @@ const serviceChatsAdminData: ServiceChatsAdminData = {
       {
         type: "stats",
         id: "fevral2020",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20201",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20202",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20203",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20204",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20205",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20206",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      },
+      {
+        type: "stats",
+        id: "fevral20207",
         data: {
           date: "Февраль 2020",
           tasksGiven: 1499,
@@ -238,6 +317,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
 
   const [currentOpenData, setCurrentOpenData] = useState<Chat | null>(null);
   const [currentOpenMessages, setCurrentOpenMessages] = useState<any>(null);
+  const scrollref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCurrentOpenData(
@@ -248,6 +328,11 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     setCurrentOpenMessages(
       currentOpen ? serviceChatsAdminData[currentOpen] : null
     );
+    setTimeout(() => {
+      if (scrollref && scrollref.current) {
+        scrollref.current!.scrollTo(0, scrollref.current!.scrollHeight);
+      }
+    }, 0);
   }, [chats, chatsMap, currentOpen, serviceChatsAdminMap]);
 
   useEffect(() => {
@@ -359,12 +444,40 @@ const Cabinet: React.FC<Props> = ({ user }) => {
               </div>
               {!isAdmin && <div className={s.chatbardotdotdot}>...</div>}
             </div>
-            <div className={s.messages}>
+            <div className={s.messages} ref={scrollref}>
               {currentOpenMessages?.messages?.map((m: any) => (
                 <Paper className={s.cloud} key={m.id}>
-                  {m.id}
+                  {m.type === "stats" && (
+                    <>
+                      <Typography variant="h6">
+                        Статистика: {m.data.date}
+                      </Typography>
+                      <Typography variant="h5">
+                        Выдано заданий: {m.data.tasksGiven}
+                      </Typography>
+                      <Typography variant="h5">
+                        Проверено заданий: {m.data.tasksQualified}
+                      </Typography>
+                    </>
+                  )}
                 </Paper>
               ))}
+              {isAdmin && (
+                <div className={s.butrtohjsw}>
+                  <Button variant="contained" color="primary">
+                    Показать статистику
+                  </Button>
+                  <Button variant="contained" color="primary">
+                    Редактировать группы
+                  </Button>
+                  <Button variant="contained" color="primary">
+                    Создать задание
+                  </Button>
+                  <Button variant="contained" color="primary">
+                    Создать пользователя
+                  </Button>
+                </div>
+              )}
               <Paper
                 className={s.inputPaper}
                 component="form"
