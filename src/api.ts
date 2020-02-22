@@ -32,6 +32,7 @@ export type Chat = {
 
 export type User = {
   login: string;
+  status: string;
 };
 
 export const API = {

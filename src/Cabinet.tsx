@@ -20,7 +20,8 @@ const us = makeStyles(theme => ({
     flex: `0 0 ${WIDTH}px`,
     borderRight: `1px solid ${theme.palette.primary.light}`,
     backgroundColor: theme.palette.primary.light,
-    padding: theme.spacing(11.5, 1, 10),
+    padding: theme.spacing(11.5, 1, 1),
+    // padding: theme.spacing(11.5, 1, 10),
     position: "relative"
   },
   chatCard: {
@@ -86,7 +87,11 @@ const us = makeStyles(theme => ({
     overflowY: "auto",
     padding: theme.spacing(1, 1, 10),
     position: "relative",
-    height: "calc(100% - 84px)"
+    height: "calc(100% - 84px)",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "flex-start",
+    alignItems: "flex-start"
   },
   inputPaper: {
     position: "fixed",
@@ -134,14 +139,62 @@ const us = makeStyles(theme => ({
     height: 68,
     fontSize: 32,
     padding: theme.spacing(0, 1)
+  },
+  cloud: {
+    backgroundColor: "#ccc",
+    borderRadius: theme.shape.borderRadius,
+    padding: theme.spacing(2),
+    minWidth: 200,
+    width: "100%",
+    maxWidth: 400
   }
 }));
+
+const serviceChatsAdmin: Chat[] = [
+  {
+    id: "li4ny_kabinet_admin",
+    title: "Личный кабинет",
+    about: "Personal Dashboard",
+    status: "999",
+    type: "999"
+  }
+];
+
+type ServiceChatsAdminDataMessagesTypes = "stats";
+
+type ServiceChatsAdminDataMessage = {
+  type: ServiceChatsAdminDataMessagesTypes;
+  data: any;
+  id: string;
+};
+
+type ServiceChatsAdminData = {
+  [key: string]: {
+    messages: ServiceChatsAdminDataMessage[];
+  };
+};
+
+const serviceChatsAdminData: ServiceChatsAdminData = {
+  li4ny_kabinet_admin: {
+    messages: [
+      {
+        type: "stats",
+        id: "fevral2020",
+        data: {
+          date: "Февраль 2020",
+          tasksGiven: 1499,
+          tasksQualified: 1337
+        }
+      }
+    ]
+  }
+};
 
 type Props = {
   user: User;
 };
 
-const Cabinet: React.FC<Props> = () => {
+const Cabinet: React.FC<Props> = ({ user }) => {
   const s = us();
 
   const handleSendMessage = useCallback<
@@ -169,13 +222,33 @@ const Cabinet: React.FC<Props> = () => {
     [chats]
   );
 
+  const serviceChatsAdminMap = useMemo(
+    () =>
+      serviceChatsAdmin.reduce<{ [key: string]: Chat }>(
+        (acc, curr) => ({
+          ...acc,
+          [curr.id]: curr
+        }),
+        {}
+      ),
+    []
+  );
+
   const [currentOpen, setCurrentOpen] = useState<string | null>(null);
 
   const [currentOpenData, setCurrentOpenData] = useState<Chat | null>(null);
+  const [currentOpenMessages, setCurrentOpenMessages] = useState<any>(null);
 
   useEffect(() => {
-    setCurrentOpenData(currentOpen ? chatsMap[currentOpen] : null);
-  }, [chats, chatsMap, currentOpen]);
+    setCurrentOpenData(
+      currentOpen
+        ? chatsMap[currentOpen] || serviceChatsAdminMap[currentOpen]
+        : null
+    );
+    setCurrentOpenMessages(
+      currentOpen ? serviceChatsAdminData[currentOpen] : null
+    );
+  }, [chats, chatsMap, currentOpen, serviceChatsAdminMap]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -217,6 +290,8 @@ const Cabinet: React.FC<Props> = () => {
     return null;
   }
 
+  const isAdmin = currentOpenData && currentOpenData.status === "999";
+
   return (
     <div className={s.splitWrap}>
       <div className={s.chats}>
@@ -228,6 +303,19 @@ const Cabinet: React.FC<Props> = () => {
             className={s.searchInput}
           />
         </div>
+        {user.status === "1" &&
+          serviceChatsAdmin.map(v => (
+            <Paper
+              key={v.id}
+              className={s.chatCard}
+              onClick={() => setCurrentOpen(v.id)}
+            >
+              <Paper className={s.avatar}></Paper>
+              <div className={s.cardText}>
+                <Typography variant="h6">{v.title}</Typography>
+              </div>
+            </Paper>
+          ))}
         {filteredArr.map(v => (
           <Paper
             key={v.id}
@@ -241,7 +329,7 @@ const Cabinet: React.FC<Props> = () => {
             </div>
           </Paper>
         ))}
-        <div className={s.archive}>
+        {/* <div className={s.archive}>
           <Button
             fullWidth
             color="secondary"
@@ -250,7 +338,7 @@ const Cabinet: React.FC<Props> = () => {
           >
             архив
           </Button>
-        </div>
+        </div> */}
       </div>
       <div className={s.main}>
         {currentOpenData && (
@@ -266,12 +354,17 @@ const Cabinet: React.FC<Props> = () => {
                   {currentOpenData.title}
                 </Typography>
                 <Typography variant="body2" color="inherit">
-                  #{currentOpenData.id}
+                  {isAdmin ? user.login : <>#{currentOpenData.id}</>}
                 </Typography>
               </div>
-              <div className={s.chatbardotdotdot}>...</div>
+              {!isAdmin && <div className={s.chatbardotdotdot}>...</div>}
             </div>
             <div className={s.messages}>
+              {currentOpenMessages?.messages?.map((m: any) => (
+                <Paper className={s.cloud} key={m.id}>
+                  {m.id}
+                </Paper>
+              ))}
               <Paper
                 className={s.inputPaper}
                 component="form"
