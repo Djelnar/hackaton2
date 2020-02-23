@@ -822,17 +822,16 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                           "Administrator"
                         ) : (
                           <>
-                            {state.color !== "green" && (
-                              <Button
-                                size="small"
-                                onClick={() =>
-                                  setState({ color: "paleturquoise" })
-                                }
-                                color="primary"
-                              >
-                                Принято
-                              </Button>
-                            )}
+                            <Button
+                              size="small"
+                              onClick={() =>
+                                setState({ color: "paleturquoise" })
+                              }
+                              color="primary"
+                            >
+                              Принято
+                            </Button>
+
                             {state.color !== "paleturquoise" && (
                               <Button
                                 size="small"
