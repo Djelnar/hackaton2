@@ -1,7 +1,12 @@
 {
   "name": "chat-frontend",
   "version": "0.1.0",
-  "private": true,
+  "author": "Elnar Ibragimov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Djelnar/hackaton2.git"
+  },
+  "license": "MIT",
   "dependencies": {
     "@material-ui/core": "^4.9.3",
     "@material-ui/icons": "^4.9.1",
