@@ -718,6 +718,23 @@ const Cabinet: React.FC<Props> = ({ user }) => {
 
         return;
       }
+      if (unwhite(mainValue).startsWith(unwhite("Вернуть"))) {
+        API.sendMessage({
+          mess: mainValue,
+          id_chat: currentOpenData!.id,
+          type: "pending"
+        });
+        API.editChat({
+          id: currentOpenData!.id,
+          status: "2"
+        });
+        setChats(s =>
+          s.map(c => (c.id === currentOpenData!.id ? { ...c, status: "2" } : c))
+        );
+        setMainValue("");
+
+        return;
+      }
       if (unwhite(mainValue).startsWith(unwhite("Принять у всех"))) {
         API.sendMessage({
           mess: mainValue,
