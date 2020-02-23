@@ -271,8 +271,8 @@ const afsfasf: ServiceChatsAdminData = {
       id: "fevral2020",
       data: {
         date: "Февраль 2020",
-        tasksGiven: 1499,
-        tasksQualified: 1337
+        tasksGiven: 20,
+        tasksQualified: 20
       }
     }
   ]
