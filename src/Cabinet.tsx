@@ -3,7 +3,8 @@ import React, {
   useState,
   useMemo,
   useEffect,
-  useRef
+  useRef,
+  Fragment
 } from "react";
 import {
   makeStyles,
@@ -22,14 +23,19 @@ import {
   TableBody,
   Checkbox
 } from "@material-ui/core";
-import fileicon from "./file.png";
 import sendicon from "./send.png";
 import { useDebouncedValue } from "./useDebouncedValue";
-import { API, Chat, User, Types } from "./api";
+import { API, Chat, User, Types, Message } from "./api";
+import { State } from "react-powerplug";
 
 const WIDTH = 400;
 
 const us = makeStyles(theme => ({
+  usersInMore: {
+    display: "flex",
+    padding: theme.spacing(1),
+    marginBottom: theme.spacing(1)
+  },
   field: {
     marginBottom: theme.spacing(1)
   },
@@ -148,6 +154,19 @@ const us = makeStyles(theme => ({
     width: `calc(100% - ${WIDTH}px - ${theme.spacing(2)}px)`,
     display: "flex"
   },
+  usersForCat: {
+    position: "absolute",
+    bottom: theme.spacing(6),
+    left: 200
+  },
+  userInSUggestPaper: {
+    marginTop: theme.spacing(1),
+    padding: theme.spacing(1),
+    cursor: "pointer",
+    "&:hover": {
+      backgroundColor: "#ccc"
+    }
+  },
   input: {
     border: 0,
     outline: 0,
@@ -207,6 +226,9 @@ const us = makeStyles(theme => ({
   },
   chbxc: {
     width: 48
+  },
+  moreSpace: {
+    marginBottom: theme.spacing(5)
   }
 }));
 
@@ -216,7 +238,8 @@ const serviceChatsAdmin: Chat[] = [
     title: "Личный кабинет",
     about: "Personal Dashboard",
     status: "999",
-    type: "999"
+    type: "999",
+    end_event: ""
   }
 ];
 
@@ -234,9 +257,7 @@ type ServiceChatsAdminDataMessage = {
 };
 
 type ServiceChatsAdminData = {
-  [key: string]: {
-    messages: ServiceChatsAdminDataMessage[];
-  };
+  [key: string]: ServiceChatsAdminDataMessage[];
 };
 
 type Props = {
@@ -244,29 +265,23 @@ type Props = {
 };
 
 const afsfasf: ServiceChatsAdminData = {
-  li4ny_kabinet_admin: {
-    messages: [
-      {
-        type: "stats",
-        id: "fevral2020",
-        data: {
-          date: "Февраль 2020",
-          tasksGiven: 1499,
-          tasksQualified: 1337
-        }
+  li4ny_kabinet_admin: [
+    {
+      type: "stats",
+      id: "fevral2020",
+      data: {
+        date: "Февраль 2020",
+        tasksGiven: 1499,
+        tasksQualified: 1337
       }
-    ]
-  }
+    }
+  ]
 };
+
+const unwhite = (s: string) => s.replace(/\s+/, " ").toLowerCase();
 
 const Cabinet: React.FC<Props> = ({ user }) => {
   const s = us();
-
-  const handleSendMessage = useCallback<
-    React.FormEventHandler<HTMLFormElement>
-  >(e => {
-    e.preventDefault();
-  }, []);
 
   const [search, setSearch] = useState("");
 
@@ -275,16 +290,19 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const [chatsLoading, setChatsLoading] = useState(true);
   const [chats, setChats] = useState<Chat[]>([]);
 
+  // eslint-disable-next-line
+  const chatsMem = useMemo(() => chats, [chats.length]);
+
   const chatsMap = useMemo(
     () =>
-      chats.reduce<{ [key: string]: Chat }>(
+      chatsMem.reduce<{ [key: string]: Chat }>(
         (acc, curr) => ({
           ...acc,
           [curr.id]: curr
         }),
         {}
       ),
-    [chats]
+    [chatsMem]
   );
 
   const serviceChatsAdminMap = useMemo(
@@ -299,6 +317,33 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     []
   );
 
+  const [alldata, setAlldata] = useState<Message[]>([]);
+
+  const groupedMessages = useMemo(
+    () =>
+      alldata.reduce<{ [key: string]: Message[] }>(
+        (acc, curr) => ({
+          ...acc,
+          [curr.id_chat]: (acc[curr.id_chat] || []).concat(curr)
+        }),
+        {}
+      ),
+    // eslint-disable-next-line
+    [alldata.length]
+  );
+
+  useEffect(() => {
+    API.update().then(res => setAlldata(res.result));
+
+    const cb = () => {
+      API.update().then(res => setAlldata(res.result));
+    };
+
+    let id = setInterval(cb, 1000);
+
+    return () => clearInterval(id);
+  }, []);
+
   const [currentOpen, setCurrentOpen] = useState<string | null>(null);
 
   const [currentOpenData, setCurrentOpenData] = useState<Chat | null>(null);
@@ -311,9 +356,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
 
   const updateStats = useCallback(() => {
     setServiceChatsAdminData(s => {
-      const lasts = s.li4ny_kabinet_admin.messages.filter(
-        v => v.type === "stats"
-      );
+      const lasts = s.li4ny_kabinet_admin.filter(v => v.type === "stats");
       const lasss = lasts[lasts.length - 1];
 
       const lasss2 = JSON.parse(JSON.stringify(lasss));
@@ -324,7 +367,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         tasksQualified: lasss2.data.tasksQualified
       };
 
-      s.li4ny_kabinet_admin.messages.push(lasss2);
+      s.li4ny_kabinet_admin.push(lasss2);
 
       const res = JSON.parse(JSON.stringify(s));
 
@@ -339,7 +382,9 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         : null
     );
     setCurrentOpenMessages(
-      currentOpen ? serviceChatsAdminData[currentOpen] : null
+      currentOpen
+        ? serviceChatsAdminData[currentOpen] || groupedMessages[currentOpen]
+        : null
     );
     setTimeout(() => {
       if (scrollref && scrollref.current) {
@@ -350,6 +395,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     chats,
     chatsMap,
     currentOpen,
+    groupedMessages,
     serviceChatsAdminData,
     serviceChatsAdminMap
   ]);
@@ -357,14 +403,14 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const filteredArr = useMemo(
     () =>
       debouncedSearch
-        ? chats.filter(
+        ? chatsMem.filter(
             v =>
               v.title.includes(debouncedSearch) ||
               v.about.includes(debouncedSearch) ||
               v.id.includes(debouncedSearch)
           )
         : chats,
-    [chats, debouncedSearch]
+    [chats, chatsMem, debouncedSearch]
   );
 
   const [taskToAdd, setTaskToAdd] = useState("");
@@ -378,6 +424,14 @@ const Cabinet: React.FC<Props> = ({ user }) => {
       .finally(() => {
         setChatsLoading(false);
       });
+
+    let id = setInterval(() => {
+      API.getChats().then(res => {
+        setChats(res.result);
+      });
+    }, 3000);
+
+    return () => clearInterval(id);
   }, [taskToAdd]);
 
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
@@ -423,7 +477,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         end_event: String(+new Date(res[3]) / 1000)
       }).then(() => {
         setServiceChatsAdminData(s => {
-          s.li4ny_kabinet_admin.messages.push({
+          s.li4ny_kabinet_admin.push({
             id: Math.random().toString(),
             type: "newTask",
             data: {
@@ -470,7 +524,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         status: "0"
       }).then(() => {
         setServiceChatsAdminData(s => {
-          s.li4ny_kabinet_admin.messages.push({
+          s.li4ny_kabinet_admin.push({
             id: Math.random().toString(),
             type: "newUser",
             data: {
@@ -529,7 +583,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const handleSubmitAddGr = useCallback(() => {
     API.addType(addGr).then(() => {
       setServiceChatsAdminData(s => {
-        s.li4ny_kabinet_admin.messages.push({
+        s.li4ny_kabinet_admin.push({
           id: Math.random().toString(),
           type: "newGroup",
           data: {
@@ -575,7 +629,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     API.getUsers().then(res => setUsers(res.result));
 
     setServiceChatsAdminData(s => {
-      s.li4ny_kabinet_admin.messages.push({
+      s.li4ny_kabinet_admin.push({
         id: Math.random().toString(),
         type: "movedUsers",
         data: {
@@ -592,12 +646,197 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     setAddUsersToGroupClosed();
   }, [checked, selectedG, setAddUsersToGroupClosed, types]);
 
+  const [mainValue, setMainValue] = useState("");
+  const [taskForCat, setTaskForCat] = useState("");
+
+  const appendToMain = useCallback((login: string) => {
+    setMainValue(s => s + "@" + login + " ");
+  }, []);
+
+  useEffect(() => {
+    if (
+      unwhite(mainValue).startsWith(unwhite("Назначить на ")) &&
+      !unwhite(mainValue).includes(unwhite("Назначить на @")) &&
+      currentOpenData &&
+      !Number.isNaN(+currentOpenData.id) &&
+      user.login === "admin"
+    ) {
+      setTaskForCat(currentOpenData.type);
+    } else {
+      setTaskForCat("");
+    }
+  }, [currentOpenData, mainValue, user.login]);
+
+  const handleSendMessage = useCallback<
+    React.FormEventHandler<HTMLFormElement>
+  >(
+    e => {
+      e.preventDefault();
+      if (/^назначить на @[a-zA-Z0-9]+/i.test(unwhite(mainValue))) {
+        const id = mainValue
+          .replace(/^[^@]+/, "")
+          .replace("@", "")
+          .replace(/\s+.+/, "")
+          .trim();
+
+        API.sendMessage({
+          mess: id,
+          id_chat: currentOpenData!.id,
+          type: "assign"
+        });
+        API.editChat({
+          id: currentOpenData!.id,
+          status: "1"
+        });
+        setChats(s =>
+          s.map(c => (c.id === currentOpenData!.id ? { ...c, status: "1" } : c))
+        );
+
+        API.conn_chat({
+          id_user: users.find(u => u.login === id)!.id,
+          id_chat: currentOpenData!.id
+        });
+        setMainValue("");
+
+        return;
+      }
+
+      if (unwhite(mainValue).startsWith(unwhite("Начать"))) {
+        API.sendMessage({
+          mess: mainValue,
+          id_chat: currentOpenData!.id,
+          type: "pending"
+        });
+        API.editChat({
+          id: currentOpenData!.id,
+          status: "2"
+        });
+        setChats(s =>
+          s.map(c => (c.id === currentOpenData!.id ? { ...c, status: "2" } : c))
+        );
+        setMainValue("");
+
+        return;
+      }
+      if (unwhite(mainValue).startsWith(unwhite("Принять у всех"))) {
+        API.sendMessage({
+          mess: mainValue,
+          id_chat: currentOpenData!.id,
+          type: "qualified"
+        });
+        API.editChat({
+          id: currentOpenData!.id,
+          status: "4"
+        });
+        setChats(s =>
+          s.map(c => (c.id === currentOpenData!.id ? { ...c, status: "4" } : c))
+        );
+        setMainValue("");
+
+        return;
+      }
+      if (unwhite(mainValue).startsWith(unwhite("Сделано"))) {
+        API.sendMessage({
+          mess: mainValue,
+          id_chat: currentOpenData!.id,
+          type: "done"
+        });
+        API.editChat({
+          id: currentOpenData!.id,
+          status: "3"
+        });
+        setChats(s =>
+          s.map(c => (c.id === currentOpenData!.id ? { ...c, status: "3" } : c))
+        );
+        setMainValue("");
+
+        return;
+      }
+
+      API.sendMessage({
+        mess: mainValue,
+        id_chat: currentOpenData!.id,
+        type: "text"
+      });
+
+      setMainValue("");
+
+      return;
+    },
+    [currentOpenData, mainValue, users]
+  );
+
+  const [more, setMore] = useState(false);
+
   if (chatsLoading) {
     return null;
   }
 
   return (
     <>
+      <Dialog
+        open={more}
+        onClose={() => setMore(false)}
+        fullWidth
+        scroll="body"
+      >
+        <DialogContent>
+          <Typography variant="h4">{currentOpenData?.title}</Typography>
+          <Typography variant="body2" className={s.moreSpace}>
+            Задача #{currentOpenData?.id}
+          </Typography>
+          {currentOpenData?.users?.map((u: any, i) => (
+            <Fragment key={i}>
+              <State initial={{ color: "gray" }}>
+                {({ state, setState }) => (
+                  <Paper className={s.usersInMore}>
+                    <Paper
+                      className={s.avatar}
+                      style={{
+                        backgroundColor: state.color
+                      }}
+                    />
+                    <div className={s.topbarText}>
+                      <Typography variant="h6" color="textPrimary">
+                        {u.login}
+                      </Typography>
+                      <Typography variant="caption" color="textPrimary">
+                        {u.login === "admin" ? (
+                          "Administrator"
+                        ) : (
+                          <>
+                            {state.color !== "green" && (
+                              <Button
+                                size="small"
+                                onClick={() =>
+                                  setState({ color: "paleturquoise" })
+                                }
+                                color="primary"
+                              >
+                                Принято
+                              </Button>
+                            )}
+                            {state.color !== "paleturquoise" && (
+                              <Button
+                                size="small"
+                                onClick={() => setState({ color: "green" })}
+                                color="secondary"
+                              >
+                                {" "}
+                                Вернуть в работу
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </Typography>
+                    </div>
+                  </Paper>
+                )}
+              </State>
+            </Fragment>
+          ))}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={addUsersToGroupOpen}
         onClose={setAddUsersToGroupClosed}
@@ -826,7 +1065,20 @@ const Cabinet: React.FC<Props> = ({ user }) => {
               className={currentOpen === v.id ? s.chatCardActive : s.chatCard}
               onClick={() => setCurrentOpen(v.id)}
             >
-              <Paper className={s.avatar}></Paper>
+              <Paper
+                className={s.avatar}
+                style={{
+                  //@ts-ignore
+                  backgroundColor: {
+                    "0": "gray",
+                    "1": "yellow",
+                    "2": "green",
+                    "3": "blue",
+                    "4": "paleturquoise",
+                    "5": "red"
+                  }[v.status]
+                }}
+              ></Paper>
               <div className={s.cardText}>
                 <Typography variant="body1">{v.title}</Typography>
                 <Typography variant="body2">#{v.id}</Typography>
@@ -848,8 +1100,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
           {currentOpenData && (
             <>
               <div className={s.chatbar}>
-                <Paper className={s.avatar}></Paper>
-                <div className={s.topbarText}>
+                <div>
                   <Typography
                     variant="h5"
                     color="inherit"
@@ -861,11 +1112,55 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                     {isAdmin ? user.login : <>#{currentOpenData.id}</>}
                   </Typography>
                 </div>
-                {!isAdmin && <div className={s.chatbardotdotdot}>...</div>}
+                {user.login === "admin" && !isAdmin && (
+                  <div
+                    onClick={() => setMore(true)}
+                    className={s.chatbardotdotdot}
+                  >
+                    ...
+                  </div>
+                )}
               </div>
               <div className={s.messages} ref={scrollref}>
-                {currentOpenMessages?.messages?.map((m: any) => (
+                {currentOpenMessages && currentOpenMessages.length && !isAdmin && (
+                  <Paper className={s.cloud}>
+                    <Typography variant="h4">
+                      {currentOpenData.about}
+                    </Typography>
+                  </Paper>
+                )}
+                {currentOpenMessages?.map((m: any) => (
                   <Paper className={s.cloud} key={m.id}>
+                    {m.type === "assign" && (
+                      <>
+                        <Typography variant="h6">
+                          Задача назначена на {m.text}
+                        </Typography>
+                        <Typography variant="h5">
+                          Оценочный срок до {currentOpenData.end_event}
+                        </Typography>
+                      </>
+                    )}
+                    {m.type === "done" && (
+                      <>
+                        <Typography variant="h6">Задача выполнена</Typography>
+                      </>
+                    )}
+                    {m.type === "pending" && (
+                      <>
+                        <Typography variant="h6">Задача в работе</Typography>
+                      </>
+                    )}
+                    {m.type === "qualified" && (
+                      <>
+                        <Typography variant="h5">Задача принята!</Typography>
+                      </>
+                    )}
+                    {m.type === "text" && (
+                      <>
+                        <Typography variant="h6">{m.text}</Typography>
+                      </>
+                    )}
                     {m.type === "stats" && (
                       <>
                         <Typography variant="h6">
@@ -929,6 +1224,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                         </Typography>
                       </>
                     )}
+                    <Typography variant="caption">{m.time}</Typography>
                   </Paper>
                 ))}
                 {isAdmin && (
@@ -968,11 +1264,30 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                   component="form"
                   onSubmit={handleSendMessage as any}
                 >
-                  <label className={s.fileButton}>
+                  {taskForCat && (
+                    <div className={s.usersForCat}>
+                      {users
+                        .filter(u => u.type === taskForCat)
+                        .map(u => (
+                          <Paper
+                            key={u.id}
+                            className={s.userInSUggestPaper}
+                            onClick={() => appendToMain(u.login)}
+                          >
+                            <Typography variant="body1">{u.login}</Typography>
+                          </Paper>
+                        ))}
+                    </div>
+                  )}
+                  {/* <label className={s.fileButton}>
                     <img src={fileicon} alt="" />
                     <input type="file" className={s.fileInput} />
-                  </label>
-                  <input className={s.input} />
+                  </label> */}
+                  <input
+                    className={s.input}
+                    value={mainValue}
+                    onChange={e => setMainValue(e.target.value)}
+                  />
                   <button type="submit" className={s.sendButton}>
                     <img src={sendicon} alt="" />
                   </button>

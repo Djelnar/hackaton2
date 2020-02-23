@@ -28,6 +28,8 @@ export type Chat = {
   status: string;
   title: string;
   about: string;
+  end_event: string;
+  users?: User[];
 };
 
 export type User = {
@@ -42,6 +44,15 @@ export type Types = {
   title: string;
 };
 
+export type Message = {
+  id: string;
+  time: string;
+  id_chat: string;
+  id_user: string;
+  text: string;
+  type: string;
+};
+
 export const API = {
   login: (b: Login) => request(b, "login"),
   checkSession: () => request({}, "check"),
@@ -52,12 +63,18 @@ export const API = {
   getTypes: () => request<Types[]>({}, "type"),
   addType: (value: string) => request({ title: value }, "add_type"),
   addChat: () => request({}, "add_chat"),
+  sendMessage: (b: { mess: string; id_chat: string; type: string }) =>
+    request(b, "send_mess"),
+  conn_chat: (b: { id_user: string; id_chat: string }) =>
+    request(b, "conn_chat"),
+  update: () => request<{ result: Message[] }>({}, "update"),
   editChat: (b: {
     id: string;
-    title: string;
-    about: string;
-    end_event: string;
-    type: string;
+    title?: string;
+    about?: string;
+    end_event?: string;
+    type?: string;
+    status?: string;
   }) => request(b, "edit_chat"),
   createUser: (b: {
     login: string;

@@ -15,7 +15,7 @@ const App: React.FC<Props> = () => {
   useEffect(() => {
     API.checkSession()
       .then((res: any) => {
-        if (res.status === "1") {
+        if (res.status === "1" || res.status === "0") {
           setUser(res);
           setIsIn(true);
         }
