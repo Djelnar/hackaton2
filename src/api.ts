@@ -33,6 +33,8 @@ export type Chat = {
 export type User = {
   login: string;
   status: string;
+  id: string;
+  type: string;
 };
 
 export type Types = {
@@ -45,7 +47,10 @@ export const API = {
   checkSession: () => request({}, "check"),
   getChats: () => request<{ result: Chat[] }>({}, "get_chat_user"),
   getUser: () => request<{ result: User }>({}, "user"),
+  getUsers: () => request<{ result: User[] }>({}, "users"),
+  editUser: (b: { type?: string; id: string }) => request<User>(b, "edit_user"),
   getTypes: () => request<Types[]>({}, "type"),
+  addType: (value: string) => request({ title: value }, "add_type"),
   addChat: () => request({}, "add_chat"),
   editChat: (b: {
     id: string;

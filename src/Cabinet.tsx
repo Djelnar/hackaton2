@@ -13,7 +13,14 @@ import {
   DialogTitle,
   Dialog,
   DialogContent,
-  TextField
+  TextField,
+  DialogActions,
+  TableHead,
+  TableRow,
+  TableCell,
+  Table,
+  TableBody,
+  Checkbox
 } from "@material-ui/core";
 import fileicon from "./file.png";
 import sendicon from "./send.png";
@@ -117,6 +124,11 @@ const us = makeStyles(theme => ({
     justifyContent: "flex-start",
     alignItems: "flex-start"
   },
+  addgroupwrap: {
+    display: "flex",
+    alignItems: "flex-end",
+    marginBottom: theme.spacing(5)
+  },
   inputPaper: {
     position: "fixed",
     bottom: theme.spacing(1),
@@ -181,6 +193,9 @@ const us = makeStyles(theme => ({
     width: `calc(100% - ${WIDTH}px - ${theme.spacing(2)}px)`,
     display: "flex",
     justifyContent: "space-evenly"
+  },
+  chbxc: {
+    width: 48
   }
 }));
 
@@ -194,7 +209,11 @@ const serviceChatsAdmin: Chat[] = [
   }
 ];
 
-type ServiceChatsAdminDataMessagesTypes = "stats" | "newUser";
+type ServiceChatsAdminDataMessagesTypes =
+  | "stats"
+  | "newUser"
+  | "newGroup"
+  | "movedUsers";
 
 type ServiceChatsAdminDataMessage = {
   type: ServiceChatsAdminDataMessagesTypes;
@@ -323,18 +342,6 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     serviceChatsAdminMap
   ]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setCurrentOpen(null);
-      }
-    };
-
-    window.addEventListener("keyup", handler);
-
-    return () => window.removeEventListener("keyup", handler);
-  }, []);
-
   const filteredArr = useMemo(
     () =>
       debouncedSearch
@@ -364,13 +371,26 @@ const Cabinet: React.FC<Props> = ({ user }) => {
   const [types, setTypes] = useState<Types[]>([]);
 
   useEffect(() => {
-    API.getTypes().then(res => setTypes(res));
+    let id: number = -1;
+
+    const cb = () => {
+      API.getTypes().then(res => {
+        setTypes(res);
+      });
+    };
+
+    API.getTypes().then(res => {
+      setTypes(res);
+      // id = (setInterval(cb, 3000) as unknown) as number;
+    });
+
+    return () => clearInterval(id);
   }, []);
 
   const [taskToAdd, setTaskToAdd] = useState("");
 
   const newTask = useCallback(() => {
-    API.addChat().then(res => setTaskToAdd(res.id));
+    API.addChat().then(res => setTaskToAdd(res.result.id));
 
     setCreateTaskOpen(true);
   }, []);
@@ -441,14 +461,230 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     [closeCu]
   );
 
+  // eslint-disable-next-line
+  const mtypes = useMemo(() => types, [types.length]);
+
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    API.getUsers().then(res => setUsers(res.result));
+  }, []);
+
+  const [ge, setGe] = useState(false);
+
+  const [selectedG, setSelectedG] = useState("");
+
+  useEffect(() => {
+    setSelectedG(mtypes[0]?.id);
+  }, [mtypes]);
+
+  const selectedUsers = useMemo(
+    () =>
+      users.filter(
+        u => String(u.type) === String(selectedG) && u.login !== "admin"
+      ),
+    [selectedG, users]
+  );
+
+  const rejectedUsers = useMemo(
+    () =>
+      users.filter(
+        u => String(u.type) !== String(selectedG) && u.login !== "admin"
+      ),
+    [selectedG, users]
+  );
+
+  const [addGr, setAddGr] = useState("");
+
+  const handleSubmitAddGr = useCallback(() => {
+    API.addType(addGr).then(() => {
+      setServiceChatsAdminData(s => {
+        s.li4ny_kabinet_admin.messages.push({
+          id: Math.random().toString(),
+          type: "newGroup",
+          data: {
+            title: addGr
+          }
+        });
+
+        const res2 = JSON.parse(JSON.stringify(s));
+
+        return res2;
+      });
+      setAddGr("");
+    });
+  }, [addGr]);
+
+  const [addUsersToGroupOpen, _setAddUsersToGroupOpen] = useState(false);
+
+  const isAdmin = currentOpenData && currentOpenData.status === "999";
+
+  const [checked, setChecked] = useState<{ [key: string]: boolean }>({});
+
+  const toggleChecked = useCallback((id: string) => {
+    setChecked(s => ({
+      ...s,
+      [id]: !s[id]
+    }));
+  }, []);
+
+  const setAddUsersToGroupClosed = useCallback(() => {
+    _setAddUsersToGroupOpen(false);
+    setChecked({});
+  }, []);
+
+  const submitMove = useCallback(async () => {
+    const res = Object.entries(checked)
+      .filter(([key, value]) => value)
+      .map(([key]) => key);
+
+    const res2 = await Promise.all(
+      res.map(id => API.editUser({ id, type: selectedG }))
+    );
+
+    API.getUsers().then(res => setUsers(res.result));
+
+    setServiceChatsAdminData(s => {
+      s.li4ny_kabinet_admin.messages.push({
+        id: Math.random().toString(),
+        type: "movedUsers",
+        data: {
+          names: res2.map(u => u.login).join(", "),
+          newCat: types.find(t => t.id === selectedG)?.title
+        }
+      });
+
+      const res3 = JSON.parse(JSON.stringify(s));
+
+      return res3;
+    });
+
+    setAddUsersToGroupClosed();
+  }, [checked, selectedG, setAddUsersToGroupClosed, types]);
+
   if (chatsLoading) {
     return null;
   }
 
-  const isAdmin = currentOpenData && currentOpenData.status === "999";
-
   return (
     <>
+      <Dialog
+        open={addUsersToGroupOpen}
+        onClose={setAddUsersToGroupClosed}
+        fullWidth
+        scroll="body"
+      >
+        <DialogTitle>
+          Перенести пользователей в группу{" "}
+          <Typography component="span" color="secondary" variant="h5">
+            {types.find(v => v.id === selectedG)?.title}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Paper>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell></TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Логин</TableCell>
+                  <TableCell>Группа</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {rejectedUsers.map(v => (
+                  <TableRow key={v.id}>
+                    <TableCell className={s.chbxc}>
+                      <Checkbox
+                        value={!!checked[v.id]}
+                        onChange={() => toggleChecked(v.id)}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{v.id}</TableCell>
+                    <TableCell>{v.login}</TableCell>
+                    <TableCell>
+                      {types.find(t => t.id === v.type)?.title}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={setAddUsersToGroupClosed}
+          >
+            Отменить
+          </Button>
+          <Button variant="contained" color="primary" onClick={submitMove}>
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={ge} onClose={() => setGe(false)} fullWidth scroll="body">
+        <DialogTitle>Редактировать группы</DialogTitle>
+        <DialogContent>
+          <div className={s.field}>
+            <Typography variant="body2" gutterBottom>
+              Создать группу
+            </Typography>
+            <div className={s.addgroupwrap}>
+              <TextField
+                value={addGr}
+                onChange={e => setAddGr(e.target.value)}
+                label="Название"
+              />
+              <Button onClick={handleSubmitAddGr}>Создать</Button>
+            </div>
+          </div>
+          <select
+            value={selectedG}
+            onChange={e => setSelectedG(e.target.value)}
+          >
+            {mtypes.map(t => (
+              <option value={t.id} key={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+          {selectedG !== "null" && (
+            <Button onClick={() => _setAddUsersToGroupOpen(true)}>
+              Добавить пользователей
+            </Button>
+          )}
+          <Paper>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Логин</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {selectedUsers.map(v => (
+                  <TableRow key={v.id}>
+                    <TableCell>{v.id}</TableCell>
+                    <TableCell>{v.login}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setGe(false)}
+          >
+            Закрыть
+          </Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={cuo} key={cuoKey} onClose={closeCu} fullWidth scroll="body">
         <DialogTitle>Добавить пользователя</DialogTitle>
         <DialogContent>
@@ -466,7 +702,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
               <select required>
                 {types.map(v => (
                   <option key={v.id} value={v.id}>
-                    {v.title.toUpperCase()}
+                    {v.title}
                   </option>
                 ))}
               </select>
@@ -487,7 +723,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={createTaskOpen} key={taskToAdd} fullWidth scroll="body">
+      <Dialog open={createTaskOpen} fullWidth scroll="body">
         <DialogTitle>Задание #{taskToAdd}</DialogTitle>
         <DialogContent>
           <form onSubmit={handleSubmitNewTask}>
@@ -512,7 +748,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
               <select required>
                 {types.map(v => (
                   <option key={v.id} value={v.id}>
-                    {v.title.toUpperCase()}
+                    {v.title}
                   </option>
                 ))}
               </select>
@@ -615,6 +851,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                     )}
                     {m.type === "newUser" && (
                       <>
+                        <Typography variant="h5">Новый пользователь</Typography>
                         <Typography variant="h5">
                           Логин: {m.data.login}
                         </Typography>
@@ -630,6 +867,25 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                           {m.data.status === "0"
                             ? "Пользователь"
                             : "Администратор"}
+                        </Typography>
+                      </>
+                    )}
+                    {m.type === "newGroup" && (
+                      <>
+                        <Typography variant="h5">Новая группа</Typography>
+                        <Typography variant="h5">
+                          Название: {m.data.title}
+                        </Typography>
+                      </>
+                    )}
+                    {m.type === "movedUsers" && (
+                      <>
+                        <Typography variant="h4">
+                          Смена групп пользователей
+                        </Typography>
+                        <Typography variant="h5">
+                          Пользователь(и) {m.data.names} перемещен(ы) в группу{" "}
+                          {m.data.newCat}
                         </Typography>
                       </>
                     )}
@@ -651,7 +907,11 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                     >
                       Создать задание
                     </Button>
-                    <Button variant="contained" color="primary">
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => setGe(true)}
+                    >
                       Редактировать группы
                     </Button>
                     <Button
