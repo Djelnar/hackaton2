@@ -381,7 +381,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
 
     API.getTypes().then(res => {
       setTypes(res);
-      // id = (setInterval(cb, 3000) as unknown) as number;
+      id = (setInterval(cb, 3000) as unknown) as number;
     });
 
     return () => clearInterval(id);
