@@ -59,6 +59,17 @@ const us = makeStyles(theme => ({
     justifyContent: "flex-start",
     cursor: "pointer"
   },
+  chatCardActive: {
+    padding: theme.spacing(1),
+    "&:not(:last-of-type)": {
+      marginBottom: theme.spacing(1)
+    },
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
+    cursor: "pointer",
+    backgroundColor: "#ccc"
+  },
   avatar: {
     width: 48,
     height: 48,
@@ -213,7 +224,8 @@ type ServiceChatsAdminDataMessagesTypes =
   | "stats"
   | "newUser"
   | "newGroup"
-  | "movedUsers";
+  | "movedUsers"
+  | "newTask";
 
 type ServiceChatsAdminDataMessage = {
   type: ServiceChatsAdminDataMessagesTypes;
@@ -355,6 +367,8 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     [chats, debouncedSearch]
   );
 
+  const [taskToAdd, setTaskToAdd] = useState("");
+
   useEffect(() => {
     setChatsLoading(true);
     API.getChats()
@@ -364,7 +378,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
       .finally(() => {
         setChatsLoading(false);
       });
-  }, []);
+  }, [taskToAdd]);
 
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
 
@@ -387,8 +401,6 @@ const Cabinet: React.FC<Props> = ({ user }) => {
     return () => clearInterval(id);
   }, []);
 
-  const [taskToAdd, setTaskToAdd] = useState("");
-
   const newTask = useCallback(() => {
     API.addChat().then(res => setTaskToAdd(res.result.id));
 
@@ -410,7 +422,25 @@ const Cabinet: React.FC<Props> = ({ user }) => {
         type: res[2],
         end_event: String(+new Date(res[3]) / 1000)
       }).then(() => {
+        setServiceChatsAdminData(s => {
+          s.li4ny_kabinet_admin.messages.push({
+            id: Math.random().toString(),
+            type: "newTask",
+            data: {
+              id: taskToAdd,
+              title: res[0],
+              about: res[1],
+              type: res[2],
+              end_event: res[3]
+            }
+          });
+
+          const res2 = JSON.parse(JSON.stringify(s));
+
+          return res2;
+        });
         setCreateTaskOpen(false);
+        setCurrentOpen(taskToAdd);
         setTaskToAdd("");
       });
     },
@@ -781,7 +811,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
             serviceChatsAdmin.map(v => (
               <Paper
                 key={v.id}
-                className={s.chatCard}
+                className={currentOpen === v.id ? s.chatCardActive : s.chatCard}
                 onClick={() => setCurrentOpen(v.id)}
               >
                 <Paper className={s.avatar}></Paper>
@@ -793,7 +823,7 @@ const Cabinet: React.FC<Props> = ({ user }) => {
           {filteredArr.map(v => (
             <Paper
               key={v.id}
-              className={s.chatCard}
+              className={currentOpen === v.id ? s.chatCardActive : s.chatCard}
               onClick={() => setCurrentOpen(v.id)}
             >
               <Paper className={s.avatar}></Paper>
@@ -886,6 +916,16 @@ const Cabinet: React.FC<Props> = ({ user }) => {
                         <Typography variant="h5">
                           Пользователь(и) {m.data.names} перемещен(ы) в группу{" "}
                           {m.data.newCat}
+                        </Typography>
+                      </>
+                    )}
+                    {m.type === "newTask" && (
+                      <>
+                        <Typography variant="h5">
+                          Создана задача {m.data.title} #{m.data.id}
+                        </Typography>
+                        <Typography variant="h6">
+                          {m.data.about} до {m.data.end_event}
                         </Typography>
                       </>
                     )}
